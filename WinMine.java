@@ -17,6 +17,12 @@ enum Face {
     WON
 }
 
+enum MOUSE_STATUS {
+    PRESSED,
+    RELEASED,
+    EXITED
+}
+
 class MineButton extends JButton {
     int adj_mines;
     boolean isMine;
@@ -199,11 +205,29 @@ class WinMine {
 
                 // set up mouse listeners for button clicks
                 mineGrid[x][y].addMouseListener(new MouseAdapter(){
+                    MOUSE_STATUS mouseStatus;
+
                     public void mousePressed(MouseEvent me) {
-                        mousePressedHandler(me);
+                        if (SwingUtilities.isLeftMouseButton(me)) {
+                            mouseStatus = MOUSE_STATUS.PRESSED;
+                            mousePressedHandler(me);
+                        }
+                        // if (SwingUtilities.isRightMouseButton(me))
+                    }
+                    public void mouseExited(MouseEvent me) {
+                        if (SwingUtilities.isLeftMouseButton(me)) {
+                            System.out.println("asdfasfasdf");
+                            mouseStatus = MOUSE_STATUS.EXITED;
+                        }
                     }
                     public void mouseReleased(MouseEvent me) {
-                        mouseReleasedHandler(me);
+                        if (SwingUtilities.isLeftMouseButton(me)) {
+                            if (mouseStatus != MOUSE_STATUS.EXITED) {
+                                mouseReleasedHandler(me);
+                            } else {
+                                mouseReleasedFaceHandler(me);
+                            }
+                        }
                     }
                 });
             }
@@ -214,6 +238,11 @@ class WinMine {
     private static void mousePressedHandler(MouseEvent me) {
         FACEBUTTON.showFace(Face.NERVOUS);
     }
+
+    private static void mouseReleasedFaceHandler(MouseEvent me) {
+        FACEBUTTON.showFace(Face.OK);
+    }
+
     private static void mouseReleasedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
         if (thisButton.hasMine()) {
