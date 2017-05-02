@@ -8,7 +8,7 @@ Minesweeper
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.*;
 
 enum Face {
     OK,
@@ -23,6 +23,8 @@ class MineButton extends JButton {
 
     MineButton(String s, int myAdjMines, boolean myIsMine) {
         super(s);
+        super.setRolloverEnabled(false);
+        super.setFocusPainted(false);
         this.adj_mines = myAdjMines;
         this.isMine = myIsMine;
     }
@@ -35,6 +37,14 @@ class MineButton extends JButton {
         super.setContentAreaFilled(false);
         super.setBorderPainted(true);
         super.setOpaque(false);
+
+        ImageIcon tileIcon;
+        if (hasMine()) {
+            tileIcon = new ImageIcon(getClass().getResource("img/mine.png"));
+        } else {
+            tileIcon = new ImageIcon(getClass().getResource("img/num-2.png"));
+        }
+        this.setIcon(tileIcon);
     }
 
     public boolean hasMine() {
@@ -47,9 +57,11 @@ class FaceButton extends JButton {
 
     FaceButton(Face myFace) {
         this.face = myFace;
+        super.setFocusPainted(false);
+        showFace(this.face);
     }
     FaceButton() {
-        this.face = Face.OK;
+        this(Face.OK);
     }
 
     void showFace(Face myface) {
@@ -85,6 +97,7 @@ class FaceButton extends JButton {
 }
 
 class WinMine {
+    public static JFrame WM_WINDOW;
     public static JTextField MINES_LEFT = new JTextField(2);
     public static JTextField TIMER = new JTextField(2);
     public static FaceButton FACEBUTTON;
@@ -102,9 +115,9 @@ class WinMine {
 
     private static void doLayout() {
         // set up JFrame
-        JFrame wmWindow = new JFrame();
-        wmWindow.setResizable(false);
-        wmWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        WM_WINDOW = new JFrame();
+        WM_WINDOW.setResizable(false);
+        WM_WINDOW.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         // make the layout.
         // make the upper panels
@@ -121,40 +134,68 @@ class WinMine {
         upperPanel.add(minesRemainingDisplay, bordLay.LINE_END);
 
         // make the game board grid
-        JPanel buttonPanel = makeButtonGrid(wmWindow, 8, 8, 64);
+        JPanel buttonPanel = makeButtonGrid(WM_WINDOW, 8, 8, 10);
 
         // build the window
-        wmWindow.add(upperPanel, BorderLayout.PAGE_START);
-        wmWindow.add(buttonPanel, BorderLayout.CENTER);
+        WM_WINDOW.add(upperPanel, BorderLayout.PAGE_START);
+        WM_WINDOW.add(buttonPanel, BorderLayout.CENTER);
 
         // pack and display window
-        wmWindow.pack();
-        wmWindow.setVisible(true);
+        WM_WINDOW.pack();
+        WM_WINDOW.setVisible(true);
     }
 
     private static void makeFaceButton() {
         FACEBUTTON = new FaceButton();
         FACEBUTTON.setPreferredSize(new Dimension(34, 34));
+        // make an action listener to start new game when clicked
+        FACEBUTTON.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                WM_WINDOW.dispose();
+                doLayout();
+            }
+        });
+    }
+
+
+    private static ArrayList<Integer> mineLocs(int numMines, int numButtons) {
+        // determine where all the mines will be
+        ArrayList<Integer> mineLocations = new ArrayList<Integer>();
+        Random rnd = new Random();
+        int randInt;
+        for (int x = 0; x < numMines; x++) {
+            do {
+                randInt = rnd.nextInt(numButtons);
+            // make sure there's only 1 occurence of each number
+            } while (Collections.frequency(mineLocations, randInt) > 0);
+            mineLocations.add(randInt);
+        }
+        // sort the mine locations (not necessary but makes cheating easier)
+        Collections.sort(mineLocations);
+        // System.out.println(mineLocations);
+        return mineLocations;
     }
 
     private static JPanel makeButtonGrid(JFrame window, int rows, int cols,
                                          int numMines) {
         JPanel butPan = new JPanel(new GridLayout(rows, cols));
-
         MineButton[][] mineGrid = new MineButton[rows][cols];
+        boolean mine;
 
         // create and distribute mine tiles
-        int[] mineList = ThreadLocalRandom.current().ints(0, rows * cols).distinct().limit(numMines);
-        for (int asdf : mineList) {
-            System.out.println(asdf);
-        }
+        ArrayList<Integer> mineList = mineLocs(numMines, rows * cols);
+        // cheat sheet:
+        System.out.println("*****cheats!*****\n" + mineList);
         // make the buttons
         for (int x = 0; x < rows; x++) {
             for (int y = 0; y < cols; y++) {
-                mineGrid[x][y] = new MineButton(1, true);
+                // see if this tile should be a mine
+                if (mineList.contains((rows * x) + y)) mine = true;
+                else mine = false;
+                mineGrid[x][y] = new MineButton(1, mine);
                 // mineGrid[x][y] = new MineButton(Integer.toString((rows * x) + y), 1, true);
                 butPan.add(mineGrid[x][y]);
-                mineGrid[x][y].setPreferredSize(new Dimension(50, 50));
+                mineGrid[x][y].setPreferredSize(new Dimension(25, 25));
 
                 // set up mouse listeners for button clicks
                 mineGrid[x][y].addMouseListener(new MouseAdapter(){
@@ -180,6 +221,7 @@ class WinMine {
         } else {
             FACEBUTTON.showFace(Face.OK);
         }
+        thisButton.clickedStyle();
     }
 
 
