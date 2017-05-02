@@ -26,6 +26,7 @@ enum MOUSE_STATUS {
 class MineButton extends JButton {
     int adj_mines;
     boolean isMine;
+    boolean isFlagged;
 
     MineButton(String s, int myAdjMines, boolean myIsMine) {
         super(s);
@@ -33,13 +34,14 @@ class MineButton extends JButton {
         super.setFocusPainted(false);
         this.adj_mines = myAdjMines;
         this.isMine = myIsMine;
+        this.isFlagged = false;
     }
 
     MineButton(int myAdjMines, boolean myIsMine) {
         this("", myAdjMines, myIsMine);
     }
 
-    public void clickedStyle() {
+    public void decorateClicked() {
         super.setContentAreaFilled(false);
         super.setBorderPainted(true);
         super.setOpaque(false);
@@ -55,6 +57,27 @@ class MineButton extends JButton {
 
     public boolean hasMine() {
         return this.isMine;
+    }
+
+    public void toggleFlag() {
+        if (this.isFlagged) this.isFlagged = false;
+        else this.isFlagged = true;
+
+        this.decorateFlag();
+    }
+
+    private boolean getFlagged() {
+        return this.isFlagged;
+    }
+
+    private void decorateFlag() {
+        if (getFlagged()) {
+            ImageIcon flagIcon = new ImageIcon(
+                getClass().getResource("img/flag.png"));
+            this.setIcon(flagIcon);
+        } else {
+            this.setIcon(null);
+        }
     }
 }
 
@@ -210,9 +233,11 @@ class WinMine {
                     public void mousePressed(MouseEvent me) {
                         if (SwingUtilities.isLeftMouseButton(me)) {
                             mouseStatus = MOUSE_STATUS.PRESSED;
-                            mousePressedHandler(me);
+                            mouseLeftPressedHandler(me);
                         }
-                        // if (SwingUtilities.isRightMouseButton(me))
+                        if (SwingUtilities.isRightMouseButton(me)) {
+                            mouseRightPressedHandler(me);
+                        }
                     }
                     public void mouseExited(MouseEvent me) {
                         if (SwingUtilities.isLeftMouseButton(me)) {
@@ -235,8 +260,14 @@ class WinMine {
         return butPan;
     }
 
-    private static void mousePressedHandler(MouseEvent me) {
+    private static void mouseLeftPressedHandler(MouseEvent me) {
         FACEBUTTON.showFace(Face.NERVOUS);
+    }
+
+    private static void mouseRightPressedHandler(MouseEvent me) {
+        MineButton thisButton = (MineButton)me.getSource();
+        thisButton.toggleFlag();
+
     }
 
     private static void mouseReleasedFaceHandler(MouseEvent me) {
@@ -250,7 +281,7 @@ class WinMine {
         } else {
             FACEBUTTON.showFace(Face.OK);
         }
-        thisButton.clickedStyle();
+        thisButton.decorateClicked();
     }
 
 
