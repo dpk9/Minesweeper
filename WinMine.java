@@ -19,13 +19,15 @@ enum Face {OK,
 
 // for keeping the mouseReleased from firing if the mouse has been moved off
 // the tile before release
-enum MOUSE_STATUS {PRESSED,
-                   RELEASED,
-                   EXITED
-                  }
+enum MouseStatus {PRESSED,
+                  LR_PRESSED,
+                  RELEASED,
+                  LR_RELEASED,
+                  EXITED
+                 }
 
 class MineButton extends JButton {
-    // Class for the mine button grid, extending JButton. 
+    // Class for the mine button grid, extending JButton.
     private int adjMines;
     private boolean isMine;
     private boolean flagged;
@@ -86,7 +88,7 @@ class MineButton extends JButton {
     }
 
     public boolean hasMine() {
-        // return whether or not this tile has a mine 
+        // return whether or not this tile has a mine
         return this.isMine;
     }
 
@@ -101,7 +103,7 @@ class MineButton extends JButton {
         else this.flagged = true;
 
         // display/remove the flag icon
-        this.decorateFlag();
+        if (!this.getRevealed()) this.decorateFlag();
     }
 
     public boolean getFlagged() {
@@ -246,6 +248,8 @@ class WinMine {
     public static int ROWS;
     // cols for game board
     public static int COLS;
+    // mouse status
+    public static MouseStatus MOUSE_STATUS;
 
     // main function
     public static void main(String[] args) {
@@ -280,8 +284,8 @@ class WinMine {
         upperPanel.add(minesRemainingDisplay, bordLay.LINE_END);
 
         // make the game board grid
-        ROWS = 20;
-        COLS = 20;
+        ROWS = 10;
+        COLS = 10;
         JPanel buttonPanel = makeButtonGrid(WM_WINDOW, ROWS, COLS, 10);
 
         // build the window
@@ -357,40 +361,57 @@ class WinMine {
 
                 // set up mouse listeners for button clicks
                 MINE_GRID[x][y].addMouseListener(new MouseAdapter(){
-                    MOUSE_STATUS mouseStatus;
 
                     public void mousePressed(MouseEvent me) {
                         // when left mouse is pressed. update mouse status to
                         // PRESSED
-                        if (SwingUtilities.isLeftMouseButton(me)) {
-                            mouseStatus = MOUSE_STATUS.PRESSED;
-                            mouseLeftPressedHandler(me);
+
+                        // L + R pressed
+                        if (SwingUtilities.isLeftMouseButton(me)
+                                 && SwingUtilities.isRightMouseButton(me)) {
+                            MOUSE_STATUS = MouseStatus.LR_PRESSED;
+                            mouseLRPressedHandler(me);
                         }
-                        // when right mouse is pressed
-                        else if (SwingUtilities.isRightMouseButton(me)) {
+                        // RIGHT pressed
+                        else if (SwingUtilities.isRightMouseButton(me)
+                                 && MOUSE_STATUS != MouseStatus.LR_PRESSED) {
                             mouseRightPressedHandler(me);
+                        }
+                        // LEFT pressed
+                        else if (SwingUtilities.isLeftMouseButton(me)
+                                 && MOUSE_STATUS != MouseStatus.LR_PRESSED) {
+                            MOUSE_STATUS = MouseStatus.PRESSED;
+                            mouseLeftPressedHandler(me);
                         }
                     }
                     public void mouseExited(MouseEvent me) {
                         // when mouse leave the button before releasing, update
                         // mouse status to EXITED to be able to cancel the
                         // mouse released action from firing
-                        if (SwingUtilities.isLeftMouseButton(me)) {
-                            mouseStatus = MOUSE_STATUS.EXITED;
-                        }
+                        MOUSE_STATUS = MouseStatus.EXITED;
                     }
+
+
                     public void mouseReleased(MouseEvent me) {
-                        if (SwingUtilities.isLeftMouseButton(me)) {
-                            // fire if the mouse has not exited the button
-                            if (mouseStatus != MOUSE_STATUS.EXITED) {
-                                mouseReleasedHandler(me);
-                            } else {
-                                // don't fire if mouse has EXITED the button, 
-                                // but make sure the face returns to normal
-                                mouseStatus = MOUSE_STATUS.RELEASED;
-                                mouseReleasedFaceHandler(me);
+                        // fire if the mouse has not exited the button
+                        if (MOUSE_STATUS != MouseStatus.EXITED) {
+                            // don't fire if mouse has EXITED the button,
+                            // but make sure the face returns to normal
+
+                            // L + R release
+                            if (SwingUtilities.isLeftMouseButton(me)
+                                    && SwingUtilities.isRightMouseButton(me)) {
+                                MOUSE_STATUS = MouseStatus.LR_RELEASED;
+                                mouseLRReleasedHandler(me);
+                            // Left release
+                            } else if (SwingUtilities.isLeftMouseButton(me)
+                                       && MOUSE_STATUS != MouseStatus.LR_PRESSED) {
+                                MOUSE_STATUS = MouseStatus.RELEASED;
+                                mouseLeftReleasedHandler(me);
+                            // Right release
                             }
-                        }
+                        // let the face return to OK
+                        } else mouseLeftReleasedFaceHandler(me);
                     }
                 });
             }
@@ -436,6 +457,7 @@ class WinMine {
     // left press makes the face nervous :o
     private static void mouseLeftPressedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
+        System.out.println("L press");
         if (!(thisButton.getFlagged() || thisButton.getRevealed())) {
             FACEBUTTON.showFace(Face.NERVOUS);
         }
@@ -444,18 +466,31 @@ class WinMine {
     // right press toggles flag on unrevealed tile
     private static void mouseRightPressedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
+        System.out.println("R press");
         thisButton.toggleFlag();
+    }
 
+    // LR press does something
+    private static void mouseLRPressedHandler(MouseEvent me) {
+        MineButton thisButton = (MineButton)me.getSource();
+        System.out.println("L + R press");
+    }
+
+    // LR press does something
+    private static void mouseLRReleasedHandler(MouseEvent me) {
+        MineButton thisButton = (MineButton)me.getSource();
+        System.out.println("L + R release");
     }
 
     // return face to :) on exited mouse release
-    private static void mouseReleasedFaceHandler(MouseEvent me) {
+    private static void mouseLeftReleasedFaceHandler(MouseEvent me) {
         FACEBUTTON.showFace(Face.OK);
     }
 
     // reveal the tile's contents on mouse release
-    private static void mouseReleasedHandler(MouseEvent me) {
+    private static void mouseLeftReleasedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
+        System.out.println("L release");
         // do nothing if tile is flagged
         if (thisButton.getFlagged()) {
             return;
@@ -464,6 +499,7 @@ class WinMine {
             // dead face if tile had a mine
             if (thisButton.hasMine()) {
                 FACEBUTTON.showFace(Face.DEAD);
+                decorateAllMines();
                 gameOver();
             // ok face if tile is safe
             } else {
@@ -474,6 +510,16 @@ class WinMine {
         }
     }
 
+    private static void decorateAllMines() {
+        for (MineButton[] row : MINE_GRID) {
+            for (MineButton thisButton : row) {
+                if (thisButton.hasMine() && !thisButton.getFlagged()) {
+                    thisButton.decorateClicked();
+                }
+            }
+        }
+    }
+
     private static void clickThisButton(MineButton thisButton) {
         // decorate the tile with mine or number
         thisButton.decorateClicked();
@@ -481,7 +527,6 @@ class WinMine {
         // if this button has no mines and no adjacent mines (reveals a
         // blank tile), expand the safe area.
         if (thisButton.getAdjMines() == 0) {
-            // check the ring around this mine
             int[] pos = thisButton.getPosition();
             // check the ring around the minebutton
             // don't check positions below 0
@@ -498,7 +543,8 @@ class WinMine {
             for (int i = loRow; i <= hiRow; i++) {
                 for (int j = loCol; j <= hiCol; j++) {
                     MineButton anotherButton = MINE_GRID[i][j];
-                    // increase adjMines if mine is present
+                    // recursively click surrounding empty tiles to expand safe
+                    // area.
                     if (! (anotherButton.getRevealed()
                             || anotherButton.getFlagged()) ) {
                         clickThisButton(MINE_GRID[i][j]);
@@ -507,8 +553,6 @@ class WinMine {
                     // border these.
                 }
             }
-
-
         }
     }
 
