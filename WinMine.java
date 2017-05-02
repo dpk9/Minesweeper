@@ -134,7 +134,6 @@ class WinMine {
 
     private static void makeFaceButton() {
         FACEBUTTON = new FaceButton();
-        FACEBUTTON.showFace(Face.OK);
         FACEBUTTON.setPreferredSize(new Dimension(34, 34));
     }
 
@@ -145,8 +144,10 @@ class WinMine {
         MineButton[][] mineGrid = new MineButton[rows][cols];
 
         // create and distribute mine tiles
-        ThreadLocalRandom.current().ints(0, rows * cols).distinct()
-                .limit(numMines).forEach(System.out::println);
+        int[] mineList = ThreadLocalRandom.current().ints(0, rows * cols).distinct().limit(numMines);
+        for (int asdf : mineList) {
+            System.out.println(asdf);
+        }
         // make the buttons
         for (int x = 0; x < rows; x++) {
             for (int y = 0; y < cols; y++) {
