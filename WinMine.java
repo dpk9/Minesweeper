@@ -64,7 +64,11 @@ class MineButton extends JButton {
             tileIcon = new ImageIcon(getClass().getResource("img/mine.png"));
             this.setIcon(tileIcon);
         } else {
-        // if no mine, display number of adjacent mines
+            // if no mine and no adjacent mines, expand safe area
+            // if (this.adjMines == 0) {
+                
+            // }
+            // if no mine, display number of adjacent mines
             decorateAdjMineNum();
         }
     }
@@ -115,6 +119,7 @@ class MineButton extends JButton {
         }
 
         // keep the button looking unpressed and normal
+        // from StackOverflow
         super.setModel(new DefaultButtonModel() {
             @Override
             public boolean isArmed()
@@ -281,6 +286,7 @@ class WinMine {
         WM_WINDOW.setVisible(true);
     }
 
+    // make the face button and actionListener
     private static void makeFaceButton() {
         FACEBUTTON = new FaceButton();
         FACEBUTTON.setPreferredSize(new Dimension(34, 34));
@@ -292,15 +298,18 @@ class WinMine {
         });
     }
 
+    // start a new game
     private static void newGame() {
-        // Start a new game
+        // Start a new game by closing WM_WINDOW and opening a new one
         WM_WINDOW.dispose();
         doLayout();
     }
 
+    // Randomly distribute the desired number of mines in a list
     private static ArrayList<Integer> mineLocs(int numMines, int numButtons) {
         // determine where all the mines will be
         ArrayList<Integer> mineLocations = new ArrayList<Integer>();
+        // make a random int generator
         Random rnd = new Random();
         int randInt;
         for (int x = 0; x < numMines; x++) {
@@ -316,6 +325,7 @@ class WinMine {
         return mineLocations;
     }
 
+    // Build the grid of buttons that make up the main game play area
     private static JPanel makeButtonGrid(JFrame window, int rows, int cols,
                                          int numMines) {
         JPanel butPan = new JPanel(new GridLayout(rows, cols));
@@ -343,24 +353,34 @@ class WinMine {
                     MOUSE_STATUS mouseStatus;
 
                     public void mousePressed(MouseEvent me) {
+                        // when left mouse is pressed. update mouse status to
+                        // PRESSED
                         if (SwingUtilities.isLeftMouseButton(me)) {
                             mouseStatus = MOUSE_STATUS.PRESSED;
                             mouseLeftPressedHandler(me);
                         }
+                        // when right mouse is pressed
                         else if (SwingUtilities.isRightMouseButton(me)) {
                             mouseRightPressedHandler(me);
                         }
                     }
                     public void mouseExited(MouseEvent me) {
+                        // when mouse leave the button before releasing, update
+                        // mouse status to EXITED to be able to cancel the
+                        // mouse released action from firing
                         if (SwingUtilities.isLeftMouseButton(me)) {
                             mouseStatus = MOUSE_STATUS.EXITED;
                         }
                     }
                     public void mouseReleased(MouseEvent me) {
                         if (SwingUtilities.isLeftMouseButton(me)) {
+                            // fire if the mouse has not exited the button
                             if (mouseStatus != MOUSE_STATUS.EXITED) {
                                 mouseReleasedHandler(me);
                             } else {
+                                // don't fire if mouse has EXITED the button, 
+                                // but make sure the face returns to normal
+                                mouseStatus = MOUSE_STATUS.RELEASED;
                                 mouseReleasedFaceHandler(me);
                             }
                         }
@@ -398,12 +418,15 @@ class WinMine {
                         // count either.
                     }
                 }
+                // set the button's adjMines
                 thisMine.setAdjMines(adjMines);
             }
         }
+        // return the panel containing the mine grid
         return butPan;
     }
 
+    // left press makes the face nervous :o
     private static void mouseLeftPressedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
         if (!(thisButton.getFlagged() || thisButton.getRevealed())) {
@@ -411,57 +434,65 @@ class WinMine {
         }
     }
 
+    // right press toggles flag on unrevealed tile
     private static void mouseRightPressedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
         thisButton.toggleFlag();
 
     }
 
+    // return face to :) on exited mouse release
     private static void mouseReleasedFaceHandler(MouseEvent me) {
         FACEBUTTON.showFace(Face.OK);
     }
 
+    // reveal the tile's contents on mouse release
     private static void mouseReleasedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
+        // do nothing if tile is flagged
         if (thisButton.getFlagged()) {
             return;
         }
         else {
+            // dead face if tile had a mine
             if (thisButton.hasMine()) {
                 FACEBUTTON.showFace(Face.DEAD);
                 gameOver();
+            // ok face if tile is safe
             } else {
                 FACEBUTTON.showFace(Face.OK);
             }
+            // decorate the tile with mine or number
             thisButton.decorateClicked();
         }
     }
 
-
-    private static JPanel makeDisplay(JTextField display) {
+    // make a textfield display panel of red text on black
+    private static JPanel makeDisplay(JTextField displayField) {
         JPanel displayPanel = new JPanel();
         // display is the jtextfield
-        display.setEditable(false);
-        display.setText("123");
+        displayField.setEditable(false);
+        displayField.setText("123");
 
-        display.setBackground(Color.BLACK);
+        displayField.setBackground(Color.BLACK);
         Font font = new Font("Courier New", Font.BOLD, 36);
-        display.setFont(font);
-        display.setForeground(Color.RED);
-        display.setHorizontalAlignment(SwingConstants.RIGHT);
+        displayField.setFont(font);
+        displayField.setForeground(Color.RED);
+        displayField.setHorizontalAlignment(SwingConstants.RIGHT);
 
-        displayPanel.add(display);
+        displayPanel.add(displayField);
 
         return displayPanel;
     }
 
+    // game over, you lose JOptionPane popup
     private static void gameOver() {
         // This section modified from Java Docs dialog demo from:
         // https://docs.oracle.com/javase/tutorial/uiswing/examples/components/DialogDemoProject/src/components/DialogDemo.java
 
         String[] options = {"Retry", "Quit"};
         int n = JOptionPane.showOptionDialog(WM_WINDOW,
-                        "Game over. Try again?\n",
+                        "Game over. Try again or quit?\n",
                         "Game Over",
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.WARNING_MESSAGE,
@@ -473,7 +504,7 @@ class WinMine {
         } else if (n == JOptionPane.NO_OPTION) {
             WM_WINDOW.dispose();
         } else {
-            System.out.println("Please tell me what you want!");
+            System.out.println("You aren't supposed to click X!");
         }
     }
 }
