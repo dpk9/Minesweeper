@@ -64,10 +64,6 @@ class MineButton extends JButton {
             tileIcon = new ImageIcon(getClass().getResource("img/mine.png"));
             this.setIcon(tileIcon);
         } else {
-            // if no mine and no adjacent mines, expand safe area
-            // if (this.adjMines == 0) {
-                
-            // }
             // if no mine, display number of adjacent mines
             decorateAdjMineNum();
         }
@@ -76,6 +72,11 @@ class MineButton extends JButton {
     public void setAdjMines(int n) {
         // set this tile's number of adjacent mines
         this.adjMines = n;
+    }
+
+    public int getAdjMines() {
+        // return this tile's number of adjacent mines
+        return this.adjMines;
     }
 
     public int[] getPosition() {
@@ -241,6 +242,10 @@ class WinMine {
     public static FaceButton FACEBUTTON;
     // the main game grid
     public static MineButton[][] MINE_GRID;
+    // rows for game board
+    public static int ROWS;
+    // cols for game board
+    public static int COLS;
 
     // main function
     public static void main(String[] args) {
@@ -275,7 +280,9 @@ class WinMine {
         upperPanel.add(minesRemainingDisplay, bordLay.LINE_END);
 
         // make the game board grid
-        JPanel buttonPanel = makeButtonGrid(WM_WINDOW, 8, 8, 10);
+        ROWS = 20;
+        COLS = 20;
+        JPanel buttonPanel = makeButtonGrid(WM_WINDOW, ROWS, COLS, 10);
 
         // build the window
         WM_WINDOW.add(upperPanel, BorderLayout.PAGE_START);
@@ -462,8 +469,46 @@ class WinMine {
             } else {
                 FACEBUTTON.showFace(Face.OK);
             }
-            // decorate the tile with mine or number
-            thisButton.decorateClicked();
+
+            clickThisButton(thisButton);
+        }
+    }
+
+    private static void clickThisButton(MineButton thisButton) {
+        // decorate the tile with mine or number
+        thisButton.decorateClicked();
+
+        // if this button has no mines and no adjacent mines (reveals a
+        // blank tile), expand the safe area.
+        if (thisButton.getAdjMines() == 0) {
+            // check the ring around this mine
+            int[] pos = thisButton.getPosition();
+            // check the ring around the minebutton
+            // don't check positions below 0
+            int loRow = pos[0] - 1;
+            if (loRow < 0) loRow = 0;
+            int loCol = pos[1] - 1;
+            if (loCol < 0) loCol = 0;
+            // don't check positions above upper limit
+            int hiRow = pos[0] + 1;
+            if (hiRow >= ROWS) hiRow = ROWS - 1;
+            int hiCol = pos[1] + 1;
+            if (hiCol >= COLS) hiCol = COLS - 1;
+            // go around the ring
+            for (int i = loRow; i <= hiRow; i++) {
+                for (int j = loCol; j <= hiCol; j++) {
+                    MineButton anotherButton = MINE_GRID[i][j];
+                    // increase adjMines if mine is present
+                    if (! (anotherButton.getRevealed()
+                            || anotherButton.getFlagged()) ) {
+                        clickThisButton(MINE_GRID[i][j]);
+                    }
+                    // don't have to check for mine because blank tiles don't
+                    // border these.
+                }
+            }
+
+
         }
     }
 
