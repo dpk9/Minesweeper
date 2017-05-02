@@ -498,8 +498,6 @@ class WinMine {
         else {
             // dead face if tile had a mine
             if (thisButton.hasMine()) {
-                FACEBUTTON.showFace(Face.DEAD);
-                decorateAllMines();
                 gameOver();
             // ok face if tile is safe
             } else {
@@ -576,6 +574,8 @@ class WinMine {
 
     // game over, you lose JOptionPane popup
     private static void gameOver() {
+        FACEBUTTON.showFace(Face.DEAD);
+        decorateAllMines();
         // This section modified from Java Docs dialog demo from:
         // https://docs.oracle.com/javase/tutorial/uiswing/examples/components/DialogDemoProject/src/components/DialogDemo.java
 
