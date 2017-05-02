@@ -24,9 +24,10 @@ enum MOUSE_STATUS {
 }
 
 class MineButton extends JButton {
-    int adj_mines;
-    boolean isMine;
-    boolean isFlagged;
+    private int adj_mines;
+    private boolean isMine;
+    private boolean flagged;
+    private boolean revealed;
 
     MineButton(String s, int myAdjMines, boolean myIsMine) {
         super(s);
@@ -34,7 +35,8 @@ class MineButton extends JButton {
         super.setFocusPainted(false);
         this.adj_mines = myAdjMines;
         this.isMine = myIsMine;
-        this.isFlagged = false;
+        this.flagged = false;
+        this.revealed = false;
     }
 
     MineButton(int myAdjMines, boolean myIsMine) {
@@ -45,6 +47,7 @@ class MineButton extends JButton {
         super.setContentAreaFilled(false);
         super.setBorderPainted(true);
         super.setOpaque(false);
+        this.revealed = true;
 
         ImageIcon tileIcon;
         if (hasMine()) {
@@ -59,15 +62,19 @@ class MineButton extends JButton {
         return this.isMine;
     }
 
+    public boolean getRevealed() {
+        return this.revealed;
+    }
+
     public void toggleFlag() {
-        if (this.isFlagged) this.isFlagged = false;
-        else this.isFlagged = true;
+        if (this.flagged) this.flagged = false;
+        else this.flagged = true;
 
         this.decorateFlag();
     }
 
-    private boolean getFlagged() {
-        return this.isFlagged;
+    public boolean getFlagged() {
+        return this.flagged;
     }
 
     private void decorateFlag() {
@@ -78,6 +85,21 @@ class MineButton extends JButton {
         } else {
             this.setIcon(null);
         }
+
+        // keep the button looking unpressed and normal
+        super.setModel(new DefaultButtonModel() {
+            @Override
+            public boolean isArmed()
+            {
+                return false;
+            }
+
+            @Override
+            public boolean isPressed()
+            {
+                return false;
+            }
+        });
     }
 }
 
@@ -131,6 +153,7 @@ class WinMine {
     public static JTextField TIMER = new JTextField(2);
     public static FaceButton FACEBUTTON;
     public static JPanel MINESREMAININGDISPLAY;
+    public static MineButton[][] MINE_GRID;
 
     public static void main(String[] args) {
         doLayout();
@@ -180,12 +203,16 @@ class WinMine {
         // make an action listener to start new game when clicked
         FACEBUTTON.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                WM_WINDOW.dispose();
-                doLayout();
+                newGame();
             }
         });
     }
 
+    private static void newGame() {
+        // Start a new game
+        WM_WINDOW.dispose();
+        doLayout();
+    }
 
     private static ArrayList<Integer> mineLocs(int numMines, int numButtons) {
         // determine where all the mines will be
@@ -208,7 +235,7 @@ class WinMine {
     private static JPanel makeButtonGrid(JFrame window, int rows, int cols,
                                          int numMines) {
         JPanel butPan = new JPanel(new GridLayout(rows, cols));
-        MineButton[][] mineGrid = new MineButton[rows][cols];
+        MINE_GRID = new MineButton[rows][cols];
         boolean mine;
 
         // create and distribute mine tiles
@@ -221,13 +248,13 @@ class WinMine {
                 // see if this tile should be a mine
                 if (mineList.contains((rows * x) + y)) mine = true;
                 else mine = false;
-                mineGrid[x][y] = new MineButton(1, mine);
-                // mineGrid[x][y] = new MineButton(Integer.toString((rows * x) + y), 1, true);
-                butPan.add(mineGrid[x][y]);
-                mineGrid[x][y].setPreferredSize(new Dimension(25, 25));
+                MINE_GRID[x][y] = new MineButton(1, mine);
+                // MINE_GRID[x][y] = new MineButton(Integer.toString((rows * x) + y), 1, true);
+                butPan.add(MINE_GRID[x][y]);
+                MINE_GRID[x][y].setPreferredSize(new Dimension(25, 25));
 
                 // set up mouse listeners for button clicks
-                mineGrid[x][y].addMouseListener(new MouseAdapter(){
+                MINE_GRID[x][y].addMouseListener(new MouseAdapter(){
                     MOUSE_STATUS mouseStatus;
 
                     public void mousePressed(MouseEvent me) {
@@ -235,13 +262,12 @@ class WinMine {
                             mouseStatus = MOUSE_STATUS.PRESSED;
                             mouseLeftPressedHandler(me);
                         }
-                        if (SwingUtilities.isRightMouseButton(me)) {
+                        else if (SwingUtilities.isRightMouseButton(me)) {
                             mouseRightPressedHandler(me);
                         }
                     }
                     public void mouseExited(MouseEvent me) {
                         if (SwingUtilities.isLeftMouseButton(me)) {
-                            System.out.println("asdfasfasdf");
                             mouseStatus = MOUSE_STATUS.EXITED;
                         }
                     }
@@ -261,7 +287,10 @@ class WinMine {
     }
 
     private static void mouseLeftPressedHandler(MouseEvent me) {
-        FACEBUTTON.showFace(Face.NERVOUS);
+        MineButton thisButton = (MineButton)me.getSource();
+        if (!(thisButton.getFlagged() || thisButton.getRevealed())) {
+            FACEBUTTON.showFace(Face.NERVOUS);
+        }
     }
 
     private static void mouseRightPressedHandler(MouseEvent me) {
@@ -276,12 +305,18 @@ class WinMine {
 
     private static void mouseReleasedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
-        if (thisButton.hasMine()) {
-            FACEBUTTON.showFace(Face.DEAD);
-        } else {
-            FACEBUTTON.showFace(Face.OK);
+        if (thisButton.getFlagged()) {
+            return;
         }
-        thisButton.decorateClicked();
+        else {
+            if (thisButton.hasMine()) {
+                FACEBUTTON.showFace(Face.DEAD);
+                gameOver();
+            } else {
+                FACEBUTTON.showFace(Face.OK);
+            }
+            thisButton.decorateClicked();
+        }
     }
 
 
@@ -300,5 +335,27 @@ class WinMine {
         displayPanel.add(display);
 
         return displayPanel;
+    }
+
+    private static void gameOver() {
+        // This section modified from Java Docs dialog demo from:
+        // https://docs.oracle.com/javase/tutorial/uiswing/examples/components/DialogDemoProject/src/components/DialogDemo.java
+
+        String[] options = {"Retry", "Quit"};
+        int n = JOptionPane.showOptionDialog(WM_WINDOW,
+                        "Game over. Try again?\n",
+                        "Game Over",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE,
+                        null,
+                        options,
+                        options[0]);
+        if (n == JOptionPane.YES_OPTION) {
+            newGame();
+        } else if (n == JOptionPane.NO_OPTION) {
+            WM_WINDOW.dispose();
+        } else {
+            System.out.println("Please tell me what you want!");
+        }
     }
 }
