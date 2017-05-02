@@ -8,6 +8,7 @@ Minesweeper
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 enum Face {
     OK,
@@ -30,10 +31,14 @@ class MineButton extends JButton {
         this("", myAdjMines, myIsMine);
     }
 
-    private void click() {
+    public void clickedStyle() {
         super.setContentAreaFilled(false);
         super.setBorderPainted(true);
         super.setOpaque(false);
+    }
+
+    public boolean hasMine() {
+        return this.isMine;
     }
 }
 
@@ -116,7 +121,7 @@ class WinMine {
         upperPanel.add(minesRemainingDisplay, bordLay.LINE_END);
 
         // make the game board grid
-        JPanel buttonPanel = makeButtonGrid(wmWindow, 8, 8);
+        JPanel buttonPanel = makeButtonGrid(wmWindow, 8, 8, 64);
 
         // build the window
         wmWindow.add(upperPanel, BorderLayout.PAGE_START);
@@ -133,11 +138,15 @@ class WinMine {
         FACEBUTTON.setPreferredSize(new Dimension(34, 34));
     }
 
-    private static JPanel makeButtonGrid(JFrame window, int rows, int cols) {
+    private static JPanel makeButtonGrid(JFrame window, int rows, int cols,
+                                         int numMines) {
         JPanel butPan = new JPanel(new GridLayout(rows, cols));
 
         MineButton[][] mineGrid = new MineButton[rows][cols];
 
+        // create and distribute mine tiles
+        ThreadLocalRandom.current().ints(0, rows * cols).distinct()
+                .limit(numMines).forEach(System.out::println);
         // make the buttons
         for (int x = 0; x < rows; x++) {
             for (int y = 0; y < cols; y++) {
@@ -148,11 +157,11 @@ class WinMine {
 
                 // set up mouse listeners for button clicks
                 mineGrid[x][y].addMouseListener(new MouseAdapter(){
-                    public void mousePressed(MouseEvent mp) {
-                        mousePressedHandler(mp);
+                    public void mousePressed(MouseEvent me) {
+                        mousePressedHandler(me);
                     }
-                    public void mouseReleased(MouseEvent mr) {
-                        mouseReleasedHandler(mr);
+                    public void mouseReleased(MouseEvent me) {
+                        mouseReleasedHandler(me);
                     }
                 });
             }
@@ -160,11 +169,16 @@ class WinMine {
         return butPan;
     }
 
-    private static void mousePressedHandler(MouseEvent mp) {
+    private static void mousePressedHandler(MouseEvent me) {
         FACEBUTTON.showFace(Face.NERVOUS);
     }
-    private static void mouseReleasedHandler(MouseEvent mr) {
-        FACEBUTTON.showFace(Face.OK);
+    private static void mouseReleasedHandler(MouseEvent me) {
+        MineButton thisButton = (MineButton)me.getSource();
+        if (thisButton.hasMine()) {
+            FACEBUTTON.showFace(Face.DEAD);
+        } else {
+            FACEBUTTON.showFace(Face.OK);
+        }
     }
 
 
