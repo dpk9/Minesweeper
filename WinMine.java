@@ -9,8 +9,6 @@ Minesweeper
  *  TODO:   make a game menu
  *
  *  TODO:   Easy Medium and Hard game modes
- *
- *  TODO:   time elapsed display
  */
 
 import java.awt.*;
@@ -37,6 +35,11 @@ enum MouseStatus {PRESSED,
 // immediately after pressing Retry on game over.
 enum Recurs {GO,
              STOP}
+
+// A game starts when the first mouse press happens. Keep track of it.
+enum GameStatus {BEFORE,
+                 IN_PROGRESS,
+                 ENDED}
 
 class MineButton extends JButton {
     // Class for the mine button grid, extending JButton.
@@ -268,9 +271,13 @@ class WinMine {
     // game window
     public static JFrame WM_WINDOW;
     // text field for remaining mines to be flagged
-    public static JTextField MINES_LEFT_FIELD = new JTextField(2);
+    public static JTextField MINES_REMAINING_FIELD = new JTextField(3);
     // elapsed seconds timer display
-    public static JTextField TIMER_FIELD = new JTextField(2);
+    public static JTextField TIMER_FIELD = new JTextField(3);
+    // elapsed seconds timer Timer
+    public static javax.swing.Timer TIMER;
+    // elapsed seconds timer Timer
+    public static int TIME;
     // face button
     public static FaceButton FACEBUTTON;
     // the main game grid
@@ -283,13 +290,14 @@ class WinMine {
     public static int MINES;
     // mouse status
     public static MouseStatus MOUSE_STATUS;
+    // game status
+    public static GameStatus GAME_STATUS;
     // recursion breaker init
     public static Recurs RECURSION = Recurs.GO;
 
     // main function
     public static void main(String[] args) {
         doLayout();
-        System.out.println("main()");
     }
 
     // set up the whole game board
@@ -297,6 +305,7 @@ class WinMine {
         ROWS = 10;
         COLS = 10;
         MINES = 10;
+        GAME_STATUS = GameStatus.BEFORE;
         // set up JFrame window
         WM_WINDOW = new JFrame();
         WM_WINDOW.setResizable(false);
@@ -304,10 +313,12 @@ class WinMine {
 
         // make the layout.
         // make the upper panels
-        JPanel timerDisplay = makeDisplay(MINES_LEFT_FIELD);
+        JPanel minesRemainingDisplay = makeDisplay(MINES_REMAINING_FIELD);
         updateMinesLeft(MINES);
         makeFaceButton();
-        JPanel minesRemainingDisplay = makeDisplay(TIMER_FIELD);
+        JPanel timerDisplay = makeDisplay(TIMER_FIELD);
+        initTimer();
+
 
         // put upper panel things into a panel
         JPanel upperPanel = new JPanel();
@@ -395,6 +406,10 @@ class WinMine {
                 MINE_GRID[x][y].addMouseListener(new MouseAdapter(){
 
                     public void mousePressed(MouseEvent me) {
+                        if (GAME_STATUS == GameStatus.BEFORE) {
+                            TIMER.start();
+                            GAME_STATUS = GameStatus.IN_PROGRESS;
+                        }
                         // when left mouse is pressed. update mouse status to
                         // PRESSED
 
@@ -498,7 +513,6 @@ class WinMine {
         MineButton thisButton = (MineButton)me.getSource();
         thisButton.toggleFlag();
 
-        System.out.println(getAllFlags());
         updateMinesLeft(MINES - getAllFlags());
         // see if you won
         checkWinCondition();
@@ -509,12 +523,14 @@ class WinMine {
         // make the surrounding mines appear pressed
         MineButton thisButton = (MineButton)me.getSource();
         for (MineButton checkButton : threeByThree(thisButton)) {
+            FACEBUTTON.showFace(Face.NERVOUS);
             checkButton.decoratePressed();
         }
     }
 
     // LR press does something
     private static void mouseLRReleasedHandler(MouseEvent me) {
+        FACEBUTTON.showFace(Face.OK);
         MineButton thisButton = (MineButton)me.getSource();
         int adjFlags = getAdjFlags(thisButton);
         int adjMines = thisButton.getAdjMines();
@@ -610,7 +626,6 @@ class WinMine {
     private static void expandSafeZone(MineButton thisButton) {
         if (thisButton.hasMine()) {
             RECURSION = Recurs.STOP;
-            System.out.println("Found mine");
             gameOver();
             return;
         } else if (RECURSION == Recurs.GO) {
@@ -703,12 +718,32 @@ class WinMine {
         return displayPanel;
     }
 
+    // update the Mines Remaining display whenever flags are toggled
     private static void updateMinesLeft(int minesLeft) {
-        MINES_LEFT_FIELD.setText(Integer.toString(minesLeft));
+        MINES_REMAINING_FIELD.setText(Integer.toString(minesLeft));
+    }
+
+    // Initialize the elapsed time timer
+    private static void initTimer() {
+        TIME = 0;
+        TIMER = new javax.swing.Timer(1000, new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                timerElapse();
+            }
+        });
+        TIMER_FIELD.setText(String.format("%03d", TIME));
+    }
+
+    // increase timer each second
+    private static void timerElapse() {
+        TIME++;
+        TIMER_FIELD.setText(String.format("%03d", TIME));
     }
 
     // game won,  JOptionPane popup
     private static void gameWon() {
+        GAME_STATUS = GameStatus.ENDED;
+        TIMER.stop();
         RECURSION = Recurs.STOP;
         FACEBUTTON.showFace(Face.WON);
 
@@ -718,7 +753,8 @@ class WinMine {
 
         String[] options = {"Play Again", "Quit"};
         int n = JOptionPane.showOptionDialog(WM_WINDOW,
-                        "You won! Play again or quit?\n",
+                        "You won in " + TIME + " seconds!\n"
+                        + "Play again or quit?\n",
                         "You Won",
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.INFORMATION_MESSAGE,
@@ -736,6 +772,8 @@ class WinMine {
 
     // game over, you lose JOptionPane popup
     private static void gameOver() {
+        GAME_STATUS = GameStatus.ENDED;
+        TIMER.stop();
         RECURSION = Recurs.STOP;
         FACEBUTTON.showFace(Face.DEAD);
         decorateAllMines();
