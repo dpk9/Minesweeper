@@ -5,11 +5,7 @@ final project
 Minesweeper
 */
 
-/*  TODO:   LR press makes affected tiles appear clicked (but don't necessarily
- *          activate the release if conditions are unmet)
- *
- *  TODO:   LR release doesnt reveal anything if done on an unrevealed tile
- *
+/*
  *  TODO:   make a game menu
  *
  *  TODO:   Easy Medium and Hard game modes
@@ -73,6 +69,16 @@ class MineButton extends JButton {
     MineButton(boolean myIsMine, int myRow, int myCol) {
         // MineButton constructor (no string first arg)
         this("", myIsMine, myRow, myCol);
+    }
+
+    public void decoratePressed() {
+        // Decorate the tile to look pressed, but remain blank
+        super.getModel().setPressed(true);
+    }
+
+    public void decorateUnpressed() {
+        // Decorate the tile to look pressed, but remain blank
+        super.getModel().setPressed(false);
     }
 
     public void decorateClicked() {
@@ -499,7 +505,11 @@ class WinMine {
 
     // LR press does something
     private static void mouseLRPressedHandler(MouseEvent me) {
+        // make the surrounding mines appear pressed
         MineButton thisButton = (MineButton)me.getSource();
+        for (MineButton checkButton : threeByThree(thisButton)) {
+            checkButton.decoratePressed();
+        }
     }
 
     // LR press does something
@@ -508,7 +518,8 @@ class WinMine {
         int adjFlags = getAdjFlags(thisButton);
         int adjMines = thisButton.getAdjMines();
         for (MineButton checkButton : threeByThree(thisButton)) {
-            if (adjFlags == adjMines) {
+            checkButton.decorateUnpressed();
+            if (adjFlags == adjMines && thisButton.getRevealed()) {
                 if (! (checkButton.getRevealed()
                         || checkButton.getFlagged()) ) {
                     expandSafeZone(checkButton);
