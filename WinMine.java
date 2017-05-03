@@ -8,8 +8,10 @@ Minesweeper
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
+import javax.swing.event.*;
 import java.util.*;
 import javax.swing.border.*;
+import java.net.URI;
 
 // different looks for the face icon
 enum Face {OK,
@@ -40,17 +42,17 @@ enum Difficulty {BEGINNER,
                  INTERMEDIATE,
                  EXPERT}
 
+// Class for the mine button grid, extending JButton.
 class MineButton extends JButton {
-    // Class for the mine button grid, extending JButton.
-    private int adjMines;
-    private boolean isMine;
-    private boolean flagged;
-    private boolean revealed;
-    private int row;
-    private int col;
+    private int adjMines;       // number of adjacent mines
+    private boolean isMine;     // if this tile is a mine
+    private boolean flagged;    // if this tile is flagged
+    private boolean revealed;   // if this tile has been revealed
+    private int row;            // row position of this tile
+    private int col;            // column position of this tile
 
+    // MineButton constructor
     MineButton(String s, boolean myIsMine, int myRow, int myCol) {
-        // MineButton constructor
         super(s);
         super.setRolloverEnabled(false);
         super.setFocusPainted(false);
@@ -64,23 +66,23 @@ class MineButton extends JButton {
         this.setBorder(raisedBorder);
     }
 
+    // MineButton constructor (no string first arg)
     MineButton(boolean myIsMine, int myRow, int myCol) {
-        // MineButton constructor (no string first arg)
         this("", myIsMine, myRow, myCol);
     }
 
+    // Decorate the tile to look pressed, but remain blank
     public void decoratePressed() {
-        // Decorate the tile to look pressed, but remain blank
         super.getModel().setPressed(true);
     }
 
+    // Decorate the tile to look pressed, but remain blank
     public void decorateUnpressed() {
-        // Decorate the tile to look pressed, but remain blank
         super.getModel().setPressed(false);
     }
 
+    // Decorate the tile when it has been clicked (mouseReleased).
     public void decorateClicked() {
-        // Decorate the tile when it has been clicked (mouseReleased).
         // Button look goes away
         super.setContentAreaFilled(false);
         super.setBorderPainted(true);
@@ -102,32 +104,29 @@ class MineButton extends JButton {
         }
     }
 
+    // set this tile's number of adjacent mines
     public void setAdjMines(int n) {
-        // set this tile's number of adjacent mines
         this.adjMines = n;
     }
-
+    // return this tile's number of adjacent mines
     public int getAdjMines() {
-        // return this tile's number of adjacent mines
         return this.adjMines;
     }
-
+    // return the {row, column} position of this mine
     public int[] getPosition() {
-        // return the {row, column} position of this mine
         int[] position = {this.row, this.col};
         return position;
     }
-
+    // return whether or not this tile has a mine
     public boolean hasMine() {
-        // return whether or not this tile has a mine
         return this.isMine;
     }
-
+    // return whether or not this tile has already been revealed
     public boolean getRevealed() {
-        // return whether or not this tile has already been revealed
         return this.revealed;
     }
 
+    // toggle this tile's flag status
     public void toggleFlag() {
         // only toggle if tile is not yet revealed
         if (!this.getRevealed()) {
@@ -143,13 +142,13 @@ class MineButton extends JButton {
         }
     }
 
+    // return whether or not this tile is currently flagged
     public boolean getFlagged() {
-        // return whether or not this tile is currently flagged
         return this.flagged;
     }
 
+    // show a flag if this.flagged == true, remove it if its == false
     private void decorateFlag() {
-        // show a flag if this.flagged == true, remove it if its == false
         if (getFlagged()) {
             ImageIcon flagIcon = new ImageIcon(
                 getClass().getResource("img/flag.png"));
@@ -175,8 +174,8 @@ class MineButton extends JButton {
         });
     }
 
+    // show the number of mines adjacent to this tile. leave blank if no
     private void decorateAdjMineNum() {
-        // show the number of mines adjacent to this tile. leave blank if no
         // adjacent mines.
         ImageIcon numIcon;
         int n = this.adjMines;
@@ -221,8 +220,8 @@ class MineButton extends JButton {
     }
 }
 
+// Class for the fac button at the top of the window.
 class FaceButton extends JButton {
-    // Class for the fac button at the top of the window.
     Face face;
 
     FaceButton(Face myFace) {
@@ -388,31 +387,34 @@ class WinMine {
             public void actionPerformed(ActionEvent e) {
                 // Make an Option Dialog to choose difficulty; start new game
                 String[] options = {"Beginner", "Intermediate", "Expert"};
-                int n = JOptionPane.showOptionDialog(WM_WINDOW,
+                int n = JOptionPane.showOptionDialog(
+                        WM_WINDOW,
                         "Choose difficulty:\n"
-                        + "Beginner:\t 9x9, 10 mines\n"
-                        + "Intermediate:\t \n"
-                        + "Expert:\t \n",
+                        + "Beginner: 9 x 9, 10 mines\n"
+                        + "Intermediate: 16 x 16, 40 mines \n"
+                        + "Expert: 16 x 30, 99 mines \n",
                         "Choose Difficulty",
                         JOptionPane.YES_NO_CANCEL_OPTION,
                         JOptionPane.QUESTION_MESSAGE,
                         null,   // use standard Q Message icon
                         options,
-                        options[1]);
+                        options[2]);
 
                 switch (n) {
                     case 0:
                         setDifficulty(Difficulty.BEGINNER);
+                        newGame();
                         break;
                     case 1:
                         setDifficulty(Difficulty.INTERMEDIATE);
+                        newGame();
                         break;
                     case 2:
                         setDifficulty(Difficulty.EXPERT);
+                        newGame();
                         break;
+                    default: break;
                 }
-
-                newGame();
             }
         });
         exitMenuItem.addActionListener(new ActionListener() {
@@ -427,7 +429,49 @@ class WinMine {
         // help menu item action listeners
         aboutMenuItem.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                // TODO
+                JEditorPane aboutPane;
+                try {
+                    // have to make a JEditorPane to make the URL clickable
+                    aboutPane = new JEditorPane("text/html",
+                            "<html>"
+                                + "<head>"
+                                    + "<style>"
+                                        + "body {background-color: #EEEEEE;}"
+                                    + "</style>"
+                                + "</head>"
+                                + "<body>"
+                                    + "This MineSweeper clone was made by<br/>"
+                                    + "David Kalish for Harvard Extension<br/>"
+                                    + "School, course CSCI-E10b.<br/><br/>"
+                                    + "Code is maintained at:<br/>"
+                                    + "<a href=\"https://github.com/dpk9/WinMine\">https://github.com/dpk9/WinMine</a><br/><br/>"
+                                    + "The Minesweeper found on the Windows<br/>"
+                                    + "Store in Windows 8+ is a travesty,<br/>"
+                                    + "so that's why I made this clone of<br/>"
+                                    + "the older versions."
+                                + "</body>"
+                            + "</html>");
+                    aboutPane.setEditable(false);
+                    aboutPane.setBorder(null);
+                    // listen for URL click
+                    aboutPane.addHyperlinkListener(new HyperlinkListener() {
+                        public void hyperlinkUpdate(HyperlinkEvent e) {
+                            if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                                try {
+                                    if(Desktop.isDesktopSupported())
+                                    {
+                                        Desktop.getDesktop().browse(new URI(e.getURL().toString()));
+                                    }
+                                } catch (Throwable t) {
+                                    t.printStackTrace();
+                                }
+                            }
+                        }
+                    });
+                    JOptionPane.showMessageDialog(WM_WINDOW, aboutPane);
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
             }
         });
         // construct menus
@@ -858,7 +902,8 @@ class WinMine {
         // https://docs.oracle.com/javase/tutorial/uiswing/examples/components/DialogDemoProject/src/components/DialogDemo.java
 
         String[] options = {"Play Again", "Quit"};
-        int n = JOptionPane.showOptionDialog(WM_WINDOW,
+        int n = JOptionPane.showOptionDialog(
+                WM_WINDOW,
                 "You won in " + TIME + " seconds!\n"
                 + "Play again or quit?\n",
                 "You Won",
@@ -887,7 +932,8 @@ class WinMine {
         // https://docs.oracle.com/javase/tutorial/uiswing/examples/components/DialogDemoProject/src/components/DialogDemo.java
 
         String[] options = {"Retry", "Quit"};
-        int n = JOptionPane.showOptionDialog(WM_WINDOW,
+        int n = JOptionPane.showOptionDialog(
+                        WM_WINDOW,
                         "Game over. Try again or quit?\n",
                         "Game Over",
                         JOptionPane.YES_NO_OPTION,
