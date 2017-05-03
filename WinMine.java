@@ -598,7 +598,7 @@ class WinMine {
         for (int x = 0; x < rows; x++) {
             for (int y = 0; y < cols; y++) {
                 // see if this tile should be a mine
-                if (mineList.contains((rows * x) + y)) isMine = true;
+                if (mineList.contains((cols * x) + y)) isMine = true;
                 else isMine = false;
                 // create the mine buttons
                 MINE_GRID[x][y] = new MineButton(isMine, x, y);
