@@ -4,6 +4,7 @@ Rewriting the classic Minesweeper because the one on the Windows Store is a trav
 ## Differences from classic minesweeper (some are pedantic)
 * No custom game board
 * Face button is big
+* You CAN lose on the first click
 
 ## Minesweeper help
 http://www.minesweeper.info/wiki/Strategy
