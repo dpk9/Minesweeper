@@ -5,12 +5,6 @@ final project
 Minesweeper
 */
 
-/*
- *  TODO:   make a game menu
- *
- *  TODO:   Easy Medium and Hard game modes
- */
-
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -40,6 +34,11 @@ enum Recurs {GO,
 enum GameStatus {BEFORE,
                  IN_PROGRESS,
                  ENDED}
+
+// Game difficulty
+enum Difficulty {BEGINNER,
+                 INTERMEDIATE,
+                 EXPERT}
 
 class MineButton extends JButton {
     // Class for the mine button grid, extending JButton.
@@ -282,6 +281,8 @@ class WinMine {
     public static FaceButton FACEBUTTON;
     // the main game grid
     public static MineButton[][] MINE_GRID;
+    // difficulty tracker
+    public static Difficulty DIFFICULTY;
     // rows for game board
     public static int ROWS;
     // cols for game board
@@ -297,14 +298,37 @@ class WinMine {
 
     // main function
     public static void main(String[] args) {
+        setDifficulty(Difficulty.EXPERT);
         doLayout();
     }
 
     // set up the whole game board
     private static void doLayout() {
-        ROWS = 10;
-        COLS = 10;
-        MINES = 10;
+        // use difficulty to set the rows/cols/mines
+        // System.out.println("" + DIFFICULTY);
+        switch (DIFFICULTY) {
+            case BEGINNER:
+                ROWS = 9;
+                COLS = 9;
+                MINES = 10;
+                break;
+            case INTERMEDIATE:
+                ROWS = 16;
+                COLS = 16;
+                MINES = 40;
+                break;
+            case EXPERT:
+                ROWS = 16;
+                COLS = 30;
+                MINES = 99;
+                break;
+            default:
+                ROWS = 16;
+                COLS = 30;
+                MINES = 99;
+                break;
+        }
+
         GAME_STATUS = GameStatus.BEFORE;
         // set up JFrame window
         WM_WINDOW = new JFrame();
@@ -312,6 +336,9 @@ class WinMine {
         WM_WINDOW.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         // make the layout.
+        // Make the menu
+        JMenuBar menuBar = doMenuLayout();
+
         // make the upper panels
         JPanel minesRemainingDisplay = makeDisplay(MINES_REMAINING_FIELD);
         updateMinesLeft(MINES);
@@ -332,12 +359,87 @@ class WinMine {
         JPanel buttonPanel = makeButtonGrid(WM_WINDOW, ROWS, COLS, MINES);
 
         // build the window
+        WM_WINDOW.setJMenuBar(menuBar);
         WM_WINDOW.add(upperPanel, BorderLayout.PAGE_START);
         WM_WINDOW.add(buttonPanel, BorderLayout.CENTER);
 
         // pack and display window
         WM_WINDOW.pack();
         WM_WINDOW.setVisible(true);
+    }
+
+    // Set up the menu bar
+    private static JMenuBar doMenuLayout() {
+        JMenuBar menuBar = new JMenuBar();
+        JMenu gameMenu = new JMenu("Game");
+        JMenu helpMenu = new JMenu("Help");
+        // init game menu items
+        JMenuItem newGameMenuItem = new JMenuItem("New Game");
+        JMenuItem difficultyMenuItem = new JMenuItem("Difficulty");
+        JMenuItem exitMenuItem = new JMenuItem("Exit");
+        // game menu item action listeners
+        newGameMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                // Start a new game
+                newGame();
+            }
+        });
+        difficultyMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                // Make an Option Dialog to choose difficulty; start new game
+                String[] options = {"Beginner", "Intermediate", "Expert"};
+                int n = JOptionPane.showOptionDialog(WM_WINDOW,
+                        "Choose difficulty:\n"
+                        + "Beginner:\t 9x9, 10 mines\n"
+                        + "Intermediate:\t \n"
+                        + "Expert:\t \n",
+                        "Choose Difficulty",
+                        JOptionPane.YES_NO_CANCEL_OPTION,
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,   // use standard Q Message icon
+                        options,
+                        options[1]);
+
+                switch (n) {
+                    case 0:
+                        setDifficulty(Difficulty.BEGINNER);
+                        break;
+                    case 1:
+                        setDifficulty(Difficulty.INTERMEDIATE);
+                        break;
+                    case 2:
+                        setDifficulty(Difficulty.EXPERT);
+                        break;
+                }
+
+                newGame();
+            }
+        });
+        exitMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                // Quit the game
+                WM_WINDOW.dispose();
+            }
+        });
+
+        // init help menu items
+        JMenuItem aboutMenuItem = new JMenuItem("About");
+        // help menu item action listeners
+        aboutMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                // TODO
+            }
+        });
+        // construct menus
+        gameMenu.add(newGameMenuItem);
+        gameMenu.add(difficultyMenuItem);
+        gameMenu.add(exitMenuItem);
+        helpMenu.add(aboutMenuItem);
+
+        menuBar.add(gameMenu);
+        menuBar.add(helpMenu);
+
+        return menuBar;
     }
 
     // make the face button and actionListener
@@ -573,6 +675,10 @@ class WinMine {
         checkWinCondition();
     }
 
+    private static void setDifficulty(Difficulty diff) {
+        DIFFICULTY = diff;
+    }
+
     private static void decorateAllMines() {
         for (MineButton thisButton : mineGrid2D()) {
             if (thisButton.hasMine() && !thisButton.getFlagged()) {
@@ -753,14 +859,14 @@ class WinMine {
 
         String[] options = {"Play Again", "Quit"};
         int n = JOptionPane.showOptionDialog(WM_WINDOW,
-                        "You won in " + TIME + " seconds!\n"
-                        + "Play again or quit?\n",
-                        "You Won",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.INFORMATION_MESSAGE,
-                        winface,
-                        options,
-                        options[0]);
+                "You won in " + TIME + " seconds!\n"
+                + "Play again or quit?\n",
+                "You Won",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.INFORMATION_MESSAGE,
+                winface,
+                options,
+                options[0]);
         if (n == JOptionPane.YES_OPTION) {
             newGame();
         } else if (n == JOptionPane.NO_OPTION) {
