@@ -5,17 +5,33 @@ final project
 Minesweeper
 */
 
+/*  TODO:   LR press makes affected tiles appear clicked (but don't necessarily
+ *          activate the release if conditions are unmet)
+ *
+ *  TODO:   LR release doesnt reveal anything if done on an unrevealed tile
+ *
+ *  TODO:   make a game menu
+ *
+ *  TODO:   Easy Medium and Hard game modes
+ *
+ *  TODO:   time elapsed display
+ *
+ *  TODO:   mines remaining display
+ *
+ *  TODO:   auto-finish if tiles remaining == mines remaining
+ */
+
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import java.util.*;
+import javax.swing.border.*;
 
 // different looks for the face icon
 enum Face {OK,
            NERVOUS,
            DEAD,
-           WON
-          }
+           WON}
 
 // for keeping the mouseReleased from firing if the mouse has been moved off
 // the tile before release
@@ -23,8 +39,12 @@ enum MouseStatus {PRESSED,
                   LR_PRESSED,
                   RELEASED,
                   LR_RELEASED,
-                  EXITED
-                 }
+                  EXITED}
+
+// for breaking recursion in expandSafeZone. Otherwise, the next game loses
+// immediately after pressing Retry on game over.
+enum Recurs {GO,
+             STOP}
 
 class MineButton extends JButton {
     // Class for the mine button grid, extending JButton.
@@ -45,6 +65,9 @@ class MineButton extends JButton {
         this.revealed = false;
         this.row = myRow;
         this.col = myCol;
+        // set unclicked border
+        Border raisedBorder = new BevelBorder(BevelBorder.RAISED);
+        this.setBorder(raisedBorder);
     }
 
     MineButton(boolean myIsMine, int myRow, int myCol) {
@@ -59,6 +82,10 @@ class MineButton extends JButton {
         super.setBorderPainted(true);
         super.setOpaque(false);
         this.revealed = true;
+        this.flagged = false;
+        // set clicked border
+        Border lineBorder = new LineBorder(Color.LIGHT_GRAY, 1);
+        this.setBorder(lineBorder);
 
         // if the tile has a mine, show the mine icon
         ImageIcon tileIcon;
@@ -98,12 +125,18 @@ class MineButton extends JButton {
     }
 
     public void toggleFlag() {
-        // toggle whether this mine has a flag or not
-        if (this.flagged) this.flagged = false;
-        else this.flagged = true;
+        // only toggle if tile is not yet revealed
+        if (!this.getRevealed()) {
+            // toggle whether this mine has a flag or not
+            if (this.flagged) this.flagged = false;
+            else this.flagged = true;
 
-        // display/remove the flag icon
-        if (!this.getRevealed()) this.decorateFlag();
+            // display/remove the flag icon
+            this.decorateFlag();
+        } else {
+            // in case a revealed tile is right clicked, always flagged = false
+            this.flagged = false;
+        }
     }
 
     public boolean getFlagged() {
@@ -223,8 +256,6 @@ class FaceButton extends JButton {
                 break;
         }
         faceImg = new ImageIcon(getClass().getResource(imgPath));
-        // System.out.println(faceImg);
-        // System.out.println(faceImg.getImageLoadStatus());
         this.setIcon(faceImg);
     }
 }
@@ -250,17 +281,14 @@ class WinMine {
     public static int COLS;
     // mouse status
     public static MouseStatus MOUSE_STATUS;
+    // recursion breaker init
+    public static Recurs RECURSION = Recurs.GO;
 
     // main function
     public static void main(String[] args) {
         doLayout();
         System.out.println("main()");
     }
-
-    // public WinMine() {
-    //     doLayout();
-    //     System.out.println("WinMine");
-    // }
 
     // set up the whole game board
     private static void doLayout() {
@@ -332,7 +360,6 @@ class WinMine {
         }
         // sort the mine locations (not necessary but makes cheating easier)
         Collections.sort(mineLocations);
-        // System.out.println(mineLocations);
         return mineLocations;
     }
 
@@ -357,6 +384,7 @@ class WinMine {
                 // create the mine buttons
                 MINE_GRID[x][y] = new MineButton(isMine, x, y);
                 butPan.add(MINE_GRID[x][y]);
+
                 MINE_GRID[x][y].setPreferredSize(new Dimension(25, 25));
 
                 // set up mouse listeners for button clicks
@@ -456,8 +484,8 @@ class WinMine {
 
     // left press makes the face nervous :o
     private static void mouseLeftPressedHandler(MouseEvent me) {
+        RECURSION = Recurs.GO;
         MineButton thisButton = (MineButton)me.getSource();
-        System.out.println("L press");
         if (!(thisButton.getFlagged() || thisButton.getRevealed())) {
             FACEBUTTON.showFace(Face.NERVOUS);
         }
@@ -466,20 +494,27 @@ class WinMine {
     // right press toggles flag on unrevealed tile
     private static void mouseRightPressedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
-        System.out.println("R press");
         thisButton.toggleFlag();
     }
 
     // LR press does something
     private static void mouseLRPressedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
-        System.out.println("L + R press");
     }
 
     // LR press does something
     private static void mouseLRReleasedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
-        System.out.println("L + R release");
+        int adjFlags = getAdjFlags(thisButton);
+        int adjMines = thisButton.getAdjMines();
+        for (MineButton checkButton : threeByThree(thisButton)) {
+            if (adjFlags == adjMines) {
+                if (! (checkButton.getRevealed()
+                        || checkButton.getFlagged()) ) {
+                    expandSafeZone(checkButton);
+                }
+            }
+        }
     }
 
     // return face to :) on exited mouse release
@@ -490,7 +525,6 @@ class WinMine {
     // reveal the tile's contents on mouse release
     private static void mouseLeftReleasedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
-        System.out.println("L release");
         // do nothing if tile is flagged
         if (thisButton.getFlagged()) {
             return;
@@ -502,9 +536,8 @@ class WinMine {
             // ok face if tile is safe
             } else {
                 FACEBUTTON.showFace(Face.OK);
+                expandSafeZone(thisButton);
             }
-
-            clickThisButton(thisButton);
         }
     }
 
@@ -518,40 +551,92 @@ class WinMine {
         }
     }
 
-    private static void clickThisButton(MineButton thisButton) {
-        // decorate the tile with mine or number
-        thisButton.decorateClicked();
+    private static int getAdjFlags(MineButton thisButton) {
+        int flagCounter = 0;
 
-        // if this button has no mines and no adjacent mines (reveals a
-        // blank tile), expand the safe area.
-        if (thisButton.getAdjMines() == 0) {
-            int[] pos = thisButton.getPosition();
-            // check the ring around the minebutton
-            // don't check positions below 0
-            int loRow = pos[0] - 1;
-            if (loRow < 0) loRow = 0;
-            int loCol = pos[1] - 1;
-            if (loCol < 0) loCol = 0;
-            // don't check positions above upper limit
-            int hiRow = pos[0] + 1;
-            if (hiRow >= ROWS) hiRow = ROWS - 1;
-            int hiCol = pos[1] + 1;
-            if (hiCol >= COLS) hiCol = COLS - 1;
-            // go around the ring
-            for (int i = loRow; i <= hiRow; i++) {
-                for (int j = loCol; j <= hiCol; j++) {
-                    MineButton anotherButton = MINE_GRID[i][j];
-                    // recursively click surrounding empty tiles to expand safe
-                    // area.
-                    if (! (anotherButton.getRevealed()
-                            || anotherButton.getFlagged()) ) {
-                        clickThisButton(MINE_GRID[i][j]);
+        for (MineButton checkButton : threeByThree(thisButton)) {
+            if (checkButton.getFlagged()) flagCounter++;
+        }
+        return flagCounter;
+    }
+
+    private static void expandSafeZone(MineButton thisButton) {
+        if (thisButton.hasMine()) {
+            RECURSION = Recurs.STOP;
+            System.out.println("Found mine");
+            gameOver();
+            return;
+        } else if (RECURSION == Recurs.GO) {
+            // decorate the tile with mine or number
+            thisButton.decorateClicked();
+
+            // if this button has no mines and no adjacent mines (reveals a
+            // blank tile), expand the safe area.
+            if (thisButton.getAdjMines() == 0) {
+                // NOTE: for some reason using threeByThree() doesn't work here
+                int[] pos = thisButton.getPosition();
+                // might find a mine coming from LR click
+                // check the ring around the minebutton
+                // don't check positions below 0
+                int loRow = pos[0] - 1;
+                if (loRow < 0) loRow = 0;
+                int loCol = pos[1] - 1;
+                if (loCol < 0) loCol = 0;
+                // don't check positions above upper limit
+                int hiRow = pos[0] + 1;
+                if (hiRow >= ROWS) hiRow = ROWS - 1;
+                int hiCol = pos[1] + 1;
+                if (hiCol >= COLS) hiCol = COLS - 1;
+                // go around the ring
+                for (int i = loRow; i <= hiRow; i++) {
+                    for (int j = loCol; j <= hiCol; j++) {
+                        MineButton anotherButton = MINE_GRID[i][j];
+                        // recursively click surrounding empty tiles to expand safe
+                        // area.
+                        if (! (anotherButton.getRevealed()
+                                || anotherButton.getFlagged()) ) {
+                            expandSafeZone(anotherButton);
+                        }
+                        // don't have to check for mine because blank tiles don't
+                        // border these.
                     }
-                    // don't have to check for mine because blank tiles don't
-                    // border these.
                 }
             }
+        } else if (RECURSION == Recurs.STOP) {
+            return;
         }
+    }
+
+    private static MineButton[] threeByThree(MineButton thisButton) {
+        // return the buttons contained in the 3x3 grid surrounding thisButton
+
+        int counter = 0;
+        int[] pos = thisButton.getPosition();
+        // check the ring around the Minebutton
+        // don't check positions below 0
+        int loRow = pos[0] - 1;
+        if (loRow < 0) loRow = 0;
+        int loCol = pos[1] - 1;
+        if (loCol < 0) loCol = 0;
+        // don't check positions above upper limit
+        int hiRow = pos[0] + 1;
+        if (hiRow >= ROWS) hiRow = ROWS - 1;
+        int hiCol = pos[1] + 1;
+        if (hiCol >= COLS) hiCol = COLS - 1;
+
+        // instantiate the buttonlist once the size has been determined
+        int rowSize = hiRow - loRow + 1;
+        int colSize = hiCol - loCol + 1;
+        MineButton[] buttonList = new MineButton[(rowSize * colSize)];
+        // go around the ring
+        for (int i = loRow; i <= hiRow; i++) {
+            for (int j = loCol; j <= hiCol; j++) {
+                buttonList[counter] = MINE_GRID[i][j];
+                counter++;
+            }
+        }
+
+        return buttonList;
     }
 
     // make a textfield display panel of red text on black
@@ -574,6 +659,7 @@ class WinMine {
 
     // game over, you lose JOptionPane popup
     private static void gameOver() {
+        RECURSION = Recurs.STOP;
         FACEBUTTON.showFace(Face.DEAD);
         decorateAllMines();
         // This section modified from Java Docs dialog demo from:
