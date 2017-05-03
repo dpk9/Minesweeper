@@ -430,7 +430,50 @@ class WinMine {
         });
 
         // init help menu items
+        JMenuItem helpMenuItem = new JMenuItem("Help");
         JMenuItem aboutMenuItem = new JMenuItem("About");
+
+        // Help menu item actionListener
+        helpMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                JEditorPane helpPane;
+                try {
+                    // have to make a JEditorPane to make the URL clickable
+                    helpPane = new JEditorPane("text/html",
+                            "<html>"
+                                + "<head>"
+                                    + "<style>"
+                                        + "body {background-color: #EEEEEE;}"
+                                    + "</style>"
+                                + "</head>"
+                                + "<body>"
+                                    + "Minesweeper rules and strategy can be found at:<br/>"
+                                    + "<a href=\"http://www.minesweeper.info/wiki/Strategy\">http://www.minesweeper.info/wiki/Strategy</a><br/><br/>"
+                                + "</body>"
+                            + "</html>");
+                    helpPane.setEditable(false);
+                    helpPane.setBorder(null);
+                    // listen for URL click
+                    helpPane.addHyperlinkListener(new HyperlinkListener() {
+                        public void hyperlinkUpdate(HyperlinkEvent e) {
+                            if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                                try {
+                                    if(Desktop.isDesktopSupported())
+                                    {
+                                        Desktop.getDesktop().browse(new URI(e.getURL().toString()));
+                                    }
+                                } catch (Throwable t) {
+                                    t.printStackTrace();
+                                }
+                            }
+                        }
+                    });
+                    JOptionPane.showMessageDialog(WM_WINDOW, helpPane);
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
+            }
+        });
         // About menu item actionlistener
         aboutMenuItem.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -452,8 +495,8 @@ class WinMine {
                                     + "<a href=\"https://github.com/dpk9/WinMine\">https://github.com/dpk9/WinMine</a><br/><br/>"
                                     + "The Minesweeper found on the Windows<br/>"
                                     + "Store in Windows 8+ is a travesty,<br/>"
-                                    + "so that's why I made this clone of<br/>"
-                                    + "the older versions."
+                                    + "so that's why I made this clone of the<br/>"
+                                    + "older versions."
                                 + "</body>"
                             + "</html>");
                     aboutPane.setEditable(false);
@@ -484,6 +527,7 @@ class WinMine {
         gameMenu.add(difficultyMenuItem);
         gameMenu.add(exitMenuItem);
 
+        helpMenu.add(helpMenuItem);
         helpMenu.add(aboutMenuItem);
 
         // Construct menu bar
