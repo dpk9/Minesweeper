@@ -11,10 +11,6 @@ Minesweeper
  *  TODO:   Easy Medium and Hard game modes
  *
  *  TODO:   time elapsed display
- *
- *  TODO:   mines remaining display
- *
- *  TODO:   auto-finish if tiles remaining == mines remaining
  */
 
 import java.awt.*;
@@ -272,11 +268,9 @@ class WinMine {
     // game window
     public static JFrame WM_WINDOW;
     // text field for remaining mines to be flagged
-    public static JTextField MINES_LEFT = new JTextField(2);
-    // panel for MINES_LEFT
-    public static JPanel MINESREMAININGDISPLAY;
+    public static JTextField MINES_LEFT_FIELD = new JTextField(2);
     // elapsed seconds timer display
-    public static JTextField TIMER = new JTextField(2);
+    public static JTextField TIMER_FIELD = new JTextField(2);
     // face button
     public static FaceButton FACEBUTTON;
     // the main game grid
@@ -285,6 +279,8 @@ class WinMine {
     public static int ROWS;
     // cols for game board
     public static int COLS;
+    // # of mines to generate
+    public static int MINES;
     // mouse status
     public static MouseStatus MOUSE_STATUS;
     // recursion breaker init
@@ -298,6 +294,9 @@ class WinMine {
 
     // set up the whole game board
     private static void doLayout() {
+        ROWS = 10;
+        COLS = 10;
+        MINES = 10;
         // set up JFrame window
         WM_WINDOW = new JFrame();
         WM_WINDOW.setResizable(false);
@@ -305,9 +304,10 @@ class WinMine {
 
         // make the layout.
         // make the upper panels
-        JPanel timerDisplay = makeDisplay(MINES_LEFT);
+        JPanel timerDisplay = makeDisplay(MINES_LEFT_FIELD);
+        updateMinesLeft(MINES);
         makeFaceButton();
-        JPanel minesRemainingDisplay = makeDisplay(TIMER);
+        JPanel minesRemainingDisplay = makeDisplay(TIMER_FIELD);
 
         // put upper panel things into a panel
         JPanel upperPanel = new JPanel();
@@ -318,9 +318,7 @@ class WinMine {
         upperPanel.add(minesRemainingDisplay, bordLay.LINE_END);
 
         // make the game board grid
-        ROWS = 10;
-        COLS = 10;
-        JPanel buttonPanel = makeButtonGrid(WM_WINDOW, ROWS, COLS, 10);
+        JPanel buttonPanel = makeButtonGrid(WM_WINDOW, ROWS, COLS, MINES);
 
         // build the window
         WM_WINDOW.add(upperPanel, BorderLayout.PAGE_START);
@@ -452,37 +450,35 @@ class WinMine {
         }
 
         // find all the adjacent mine numbers
-        for (MineButton[] mineRow : MINE_GRID) {
-            for (MineButton thisMine : mineRow) {
-                // each minebutton:
-                int[] pos = thisMine.getPosition();
-                adjMines = 0;
+        for (MineButton thisMine : mineGrid2D()) {
+            // each minebutton:
+            int[] pos = thisMine.getPosition();
+            adjMines = 0;
 
-                // check the ring around the minebutton
-                // don't check positions below 0
-                int loRow = pos[0] - 1;
-                if (loRow < 0) loRow = 0;
-                int loCol = pos[1] - 1;
-                if (loCol < 0) loCol = 0;
-                // don't check positions above upper limit
-                int hiRow = pos[0] + 1;
-                if (hiRow >= rows) hiRow = rows - 1;
-                int hiCol = pos[1] + 1;
-                if (hiCol >= cols) hiCol = cols - 1;
-                // go around the ring
-                for (int i = loRow; i <= hiRow; i++) {
-                    for (int j = loCol; j <= hiCol; j++) {
-                        // increase adjMines if mine is present
-                        if (MINE_GRID[i][j].hasMine()) adjMines++;
-                        // don't have to exclude thisButton's mine because if
-                        // it's a mine, it won't display a number anyway. And
-                        // if it's not a mine, it won't affect the adjMines
-                        // count either.
-                    }
+            // check the ring around the minebutton
+            // don't check positions below 0
+            int loRow = pos[0] - 1;
+            if (loRow < 0) loRow = 0;
+            int loCol = pos[1] - 1;
+            if (loCol < 0) loCol = 0;
+            // don't check positions above upper limit
+            int hiRow = pos[0] + 1;
+            if (hiRow >= rows) hiRow = rows - 1;
+            int hiCol = pos[1] + 1;
+            if (hiCol >= cols) hiCol = cols - 1;
+            // go around the ring
+            for (int i = loRow; i <= hiRow; i++) {
+                for (int j = loCol; j <= hiCol; j++) {
+                    // increase adjMines if mine is present
+                    if (MINE_GRID[i][j].hasMine()) adjMines++;
+                    // don't have to exclude thisButton's mine because if
+                    // it's a mine, it won't display a number anyway. And
+                    // if it's not a mine, it won't affect the adjMines
+                    // count either.
                 }
-                // set the button's adjMines
-                thisMine.setAdjMines(adjMines);
             }
+            // set the button's adjMines
+            thisMine.setAdjMines(adjMines);
         }
         // return the panel containing the mine grid
         return butPan;
@@ -501,6 +497,11 @@ class WinMine {
     private static void mouseRightPressedHandler(MouseEvent me) {
         MineButton thisButton = (MineButton)me.getSource();
         thisButton.toggleFlag();
+
+        System.out.println(getAllFlags());
+        updateMinesLeft(MINES - getAllFlags());
+        // see if you won
+        checkWinCondition();
     }
 
     // LR press does something
@@ -526,6 +527,8 @@ class WinMine {
                 }
             }
         }
+        // see if you won
+        checkWinCondition();
     }
 
     // return face to :) on exited mouse release
@@ -550,14 +553,14 @@ class WinMine {
                 expandSafeZone(thisButton);
             }
         }
+        // see if you won
+        checkWinCondition();
     }
 
     private static void decorateAllMines() {
-        for (MineButton[] row : MINE_GRID) {
-            for (MineButton thisButton : row) {
-                if (thisButton.hasMine() && !thisButton.getFlagged()) {
-                    thisButton.decorateClicked();
-                }
+        for (MineButton thisButton : mineGrid2D()) {
+            if (thisButton.hasMine() && !thisButton.getFlagged()) {
+                thisButton.decorateClicked();
             }
         }
     }
@@ -569,6 +572,39 @@ class WinMine {
             if (checkButton.getFlagged()) flagCounter++;
         }
         return flagCounter;
+    }
+
+    private static MineButton[] mineGrid2D() {
+        int counter = 0;
+        MineButton[] allMines = new MineButton[ROWS * COLS];
+        for (MineButton[] row : MINE_GRID) {
+            for (MineButton thisButton : row) {
+                allMines[counter] = thisButton;
+                counter++;
+            }
+        }
+        return allMines;
+    }
+
+    private static int getAllFlags() {
+        int flagCounter = 0;
+        for (MineButton thisButton : mineGrid2D()) {
+            if (thisButton.getFlagged()) {
+                flagCounter++;
+            }
+        }
+        return flagCounter;
+    }
+
+    private static boolean checkWinCondition() {
+        // win condition: all non-mine tiles are revealed
+        for (MineButton thisButton : mineGrid2D()) {
+            if (!thisButton.hasMine() && !thisButton.getRevealed()) {
+                return false;
+            }
+        }
+        gameWon();
+        return true;
     }
 
     private static void expandSafeZone(MineButton thisButton) {
@@ -655,7 +691,6 @@ class WinMine {
         JPanel displayPanel = new JPanel();
         // display is the jtextfield
         displayField.setEditable(false);
-        displayField.setText("123");
 
         displayField.setBackground(Color.BLACK);
         Font font = new Font("Courier New", Font.BOLD, 36);
@@ -666,6 +701,37 @@ class WinMine {
         displayPanel.add(displayField);
 
         return displayPanel;
+    }
+
+    private static void updateMinesLeft(int minesLeft) {
+        MINES_LEFT_FIELD.setText(Integer.toString(minesLeft));
+    }
+
+    // game won,  JOptionPane popup
+    private static void gameWon() {
+        RECURSION = Recurs.STOP;
+        FACEBUTTON.showFace(Face.WON);
+
+        Icon winface = new ImageIcon(WinMine.class.getResource("img/face-won.png"));
+        // This section modified from Java Docs dialog demo from:
+        // https://docs.oracle.com/javase/tutorial/uiswing/examples/components/DialogDemoProject/src/components/DialogDemo.java
+
+        String[] options = {"Play Again", "Quit"};
+        int n = JOptionPane.showOptionDialog(WM_WINDOW,
+                        "You won! Play again or quit?\n",
+                        "You Won",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.INFORMATION_MESSAGE,
+                        winface,
+                        options,
+                        options[0]);
+        if (n == JOptionPane.YES_OPTION) {
+            newGame();
+        } else if (n == JOptionPane.NO_OPTION) {
+            WM_WINDOW.dispose();
+        } else {
+            System.out.println("You aren't supposed to click X!");
+        }
     }
 
     // game over, you lose JOptionPane popup
