@@ -606,7 +606,8 @@ class WinMine {
     // make the face button and actionListener
     private static void makeFaceButton() {
         FACEBUTTON = new FaceButton();
-        FACEBUTTON.setPreferredSize(new Dimension(34, 34));
+        FACEBUTTON.setPreferredSize(new Dimension(32, 32));
+        FACEBUTTON.setBorder(new BevelBorder(BevelBorder.RAISED));
         // make an action listener to start new game when clicked
         FACEBUTTON.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -1058,6 +1059,7 @@ class WinMine {
     // start a new game
     private static void newGame() {
         // Start a new game by closing WM_WINDOW and opening a new one
+        TIMER.stop();
         WM_WINDOW.dispose();
         doLayout();
     }
