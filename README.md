@@ -5,6 +5,7 @@ Rewriting the classic Minesweeper because the one on the Windows Store is a trav
 * No custom game board
 * Face button is big
 * You CAN lose on the first click
+* No ? button. It's not useful anyway.
 
 ## Minesweeper help
 http://www.minesweeper.info/wiki/Strategy
