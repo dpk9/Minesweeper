@@ -385,13 +385,26 @@ class WinMine {
         // put upper panel things into a panel
         JPanel upperPanel = new JPanel();
         BorderLayout bordLay = new BorderLayout(0,0);
+        JPanel faceContainer = new JPanel();
+        faceContainer.setLayout(new BoxLayout(faceContainer, BoxLayout.X_AXIS));
+        faceContainer.add(Box.createHorizontalGlue());
+        faceContainer.add(FACEBUTTON);
+        faceContainer.add(Box.createHorizontalGlue());
         upperPanel.setLayout(bordLay);
         upperPanel.add(timerDisplay, bordLay.LINE_START);
-        upperPanel.add(FACEBUTTON, bordLay.CENTER);
+        upperPanel.add(faceContainer, bordLay.CENTER);
         upperPanel.add(minesRemainingDisplay, bordLay.LINE_END);
+
+        // set upperPanel border
+
+        Border loweredBorder = new BevelBorder(BevelBorder.LOWERED);
+        Border gameBorder = BorderFactory.createCompoundBorder(
+                new EmptyBorder(5, 10, 5, 10), loweredBorder);
+        upperPanel.setBorder(gameBorder);
 
         // make the game board grid
         JPanel buttonPanel = makeButtonGrid(WM_WINDOW, ROWS, COLS, MINES);
+        buttonPanel.setBorder(gameBorder);
 
         // build the window
         WM_WINDOW.setJMenuBar(menuBar);
